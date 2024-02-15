@@ -24,7 +24,27 @@ function custom_tracking_shipping_fields_display_admin_order($order){
     echo '<p style="color: #595959;"><strong style="margin-left: 3px;">Carrier:</strong><br>';
     echo '<select name="_1a_carrier" style="margin-top: 3px; width: 100%;">';
     echo '<option value="">Select Carrier</option>';
+
+    // Separate carriers into two arrays: alphabetical and numerical
+    $alphabetical_carriers = $numerical_carriers = array();
     foreach ($carriers as $carrier => $link) {
+        // Check if the carrier name starts with a letter or a number
+        if (ctype_alpha(substr($carrier, 0, 1))) {
+            $alphabetical_carriers[$carrier] = $link;
+        } else {
+            $numerical_carriers[$carrier] = $link;
+        }
+    }
+
+    // Sort carriers alphabetically
+    ksort($alphabetical_carriers);
+    // Sort carriers numerically
+    uksort($numerical_carriers, 'strnatcmp');
+    // Merge the sorted arrays
+    $sorted_carriers = $alphabetical_carriers + $numerical_carriers;
+
+    // Output the sorted carriers in the select box
+    foreach ($sorted_carriers as $carrier => $link) {
         echo '<option value="' . esc_attr($carrier) . '" ' . selected($carrier_value, $carrier, false) . '>' . esc_html($carrier) . '</option>';
     }
     echo '</select>';
@@ -127,6 +147,10 @@ function custom_tracking_page_callback() {
             if ($link_value !== '') {
                 // Check if changes were made
                 if ($carriers[$updated_carrier] !== $link_value || $updated_carrier !== $_POST['carriers'][$updated_carrier]) {
+                    // Log the old and new tracking links
+                    $old_tracking_link = isset($carriers[$updated_carrier]) ? $carriers[$updated_carrier] : '';
+                    $new_tracking_link = $link_value;
+
                     // Update Carrier Name and its associated Tracking Link
                     $carriers[$updated_carrier] = $link_value; // Update the Tracking Link
                     $new_carrier_name = sanitize_text_field($_POST['carriers'][$updated_carrier]); // Get the updated Carrier Name
@@ -136,6 +160,9 @@ function custom_tracking_page_callback() {
                     }
 
                     update_option('custom_tracking_carriers', $carriers);
+
+                    // Log the update action
+                    custom_tracking_log_action('update', $updated_carrier, $old_tracking_link, $new_carrier_name, $new_tracking_link);
 
                     // Display success message
                     echo '<div class="notice notice-success is-dismissible"><p>Successfully updated Carrier: ' . esc_html($updated_carrier) . '</p></div>';
@@ -155,8 +182,12 @@ function custom_tracking_page_callback() {
         // Delete a specific carrier
         $carrier_to_delete = sanitize_text_field($_POST['delete_carrier']);
         $carriers = get_option('custom_tracking_carriers', array());
+        $tracking_link_deleted = isset($carriers[$carrier_to_delete]) ? $carriers[$carrier_to_delete] : '';
         unset($carriers[$carrier_to_delete]);
         update_option('custom_tracking_carriers', $carriers);
+
+        // Log the delete action
+        custom_tracking_log_action('delete', $carrier_to_delete, '', '', $tracking_link_deleted);
 
         // Display success message
         echo '<div class="notice notice-success is-dismissible"><p>Successfully deleted Carrier: ' . esc_html($carrier_to_delete) . '</p></div>';
@@ -175,6 +206,9 @@ function custom_tracking_page_callback() {
                 $carriers[$new_carrier] = $new_carrier_link;
                 update_option('custom_tracking_carriers', $carriers);
 
+                // Log the add action
+                custom_tracking_log_action('add', $new_carrier, '', '', $new_carrier_link);
+
                 // Display success message
                 echo '<div class="notice notice-success is-dismissible"><p>Successfully added new Carrier: ' . esc_html($new_carrier) . '</p></div>';
             } else {
@@ -182,10 +216,21 @@ function custom_tracking_page_callback() {
                 echo '<div class="notice notice-error"><p>Please enter both a new Carrier Name and Tracking Link.</p></div>';
             }
         }
+    } elseif (isset($_POST['clear_logs'])) {
+        // Clear the log file
+        $log_file = dirname(__FILE__) . '/custom_tracking_log.txt';
+        if (file_exists($log_file)) {
+            unlink($log_file);
+            // Display success message
+            echo '<div class="notice notice-success is-dismissible"><p>Logs successfully deleted.</p></div>';
+        }
     }
 
     // Retrieve carriers and tracking links
     $carriers = get_option('custom_tracking_carriers', array());
+
+    // Sort the carriers alphabetically in descending order
+    ksort($carriers);
     ?>
     <div class="wrap">
         <h1 style="line-height: 1em; margin: 20px 0 0 0; font-weight: 800; letter-spacing: 0.5px; font-size: 23px; color: #000; text-transform: uppercase;">
@@ -236,6 +281,42 @@ function custom_tracking_page_callback() {
         </div>
     </div>
     <?php
+    // Display the log section
+    custom_tracking_display_log();
+}
+
+// Function to display the log section
+function custom_tracking_display_log() {
+    $log_content = '';
+    $log_file = dirname(__FILE__) . '/custom_tracking_log.txt';
+    if (file_exists($log_file)) {
+        $log_content = file_get_contents($log_file);
+    }
+    ?>
+    <button type="button" id="toggle-log" class="button button-secondary" style="margin: 30px 0 0 2px;">Show logs</button>
+    <div id="log-section" style="margin-left: 3px; display: none;">
+        <h2 style="font-size: 1.2em;">Logs</h2>
+        <pre style="font-size: 11.5px;"><?php echo esc_html($log_content); ?></pre>
+        <form method="post" action="" onsubmit="return confirm('Are you sure you want to delete the logs?');">
+            <?php wp_nonce_field('custom_tracking_clear_logs_nonce', 'custom_tracking_clear_logs_nonce'); ?>
+            <?php if (!empty($log_content)) : ?>
+                <p style="margin: 20px 0 7px 0;"><input type="submit" name="clear_logs" class="button button-primary" value="Delete logs" style="color: #fff !important; border-color: #f40000 !important; background: #f40000 !important;"></p>
+            <?php endif; ?>
+        </form>
+    </div>
+    <script>
+        document.getElementById('toggle-log').addEventListener('click', function() {
+            var logSection = document.getElementById('log-section');
+            if (logSection.style.display === 'none') {
+                logSection.style.display = 'block';
+                document.getElementById('toggle-log').textContent = 'Hide logs';
+            } else {
+                logSection.style.display = 'none';
+                document.getElementById('toggle-log').textContent = 'Show logs';
+            }
+        });
+    </script>
+    <?php
 }
 
 // Enqueue JavaScript for form validation
@@ -252,4 +333,74 @@ function custom_tracking_enqueue_scripts() {
     </script>
     <?php
 }
+
+// Function to log actions
+function custom_tracking_log_action($action, $carrier_name, $old_tracking_link, $new_carrier_name, $new_tracking_link) {
+    date_default_timezone_set(get_option('timezone_string'));
+    $timestamp = date('d-m-Y H:i:s');
+    $log_entry = "$timestamp - ";
+
+    switch ($action) {
+        case 'add':
+            $log_entry .= "Added Carrier: $carrier_name, Tracking Link: $new_tracking_link";
+            break;
+        case 'update':
+            $log_entry .= "Updated Carrier: $carrier_name >>> $new_carrier_name, Tracking Link: $old_tracking_link >>> $new_tracking_link";
+            break;
+        case 'delete':
+            $log_entry .= "Deleted Carrier: $carrier_name, Tracking Link: $new_tracking_link";
+            break;
+        default:
+            $log_entry .= "Unknown action: $action";
+            break;
+    }
+
+    $log_entry .= "\n";
+
+    $log_file = dirname(__FILE__) . '/custom_tracking_log.txt';
+    $current_content = file_get_contents($log_file);
+    file_put_contents($log_file, $log_entry . $current_content);
+}
+
+// Add shortcode to display tracking information on the frontend
+add_shortcode('custom_tracking_info', 'custom_tracking_info_shortcode');
+
+function custom_tracking_info_shortcode($atts) {
+    // Extract shortcode attributes
+    $atts = shortcode_atts(array(
+        'order_id' => ''
+    ), $atts);
+
+    if (empty($atts['order_id'])) {
+        return 'Please provide an order ID.';
+    }
+
+    // Retrieve the order
+    $order = wc_get_order($atts['order_id']);
+
+    if (!$order) {
+        return 'Invalid order ID.';
+    }
+
+    // Retrieve carrier and tracking number
+    $carrier = $order->get_meta('_1a_carrier', true);
+    $tracking_number = $order->get_meta('_1b_tracking_number', true);
+
+    // Check if both carrier and tracking number exist
+    if (empty($carrier) || empty($tracking_number)) {
+        return 'No tracking information available.';
+    }
+
+    // Retrieve tracking link for the carrier
+    $carriers = get_option('custom_tracking_carriers', array());
+    $tracking_link = isset($carriers[$carrier]) ? $carriers[$carrier] : '';
+
+    // Generate tracking info HTML
+    $tracking_info = '<p>Carrier: ' . esc_html($carrier) . '</p>';
+    $tracking_info .= '<p>Tracking Number: ' . esc_html($tracking_number) . '</p>';
+    $tracking_info .= '<p>Tracking Link: <a href="' . esc_url($tracking_link . $tracking_number) . '" target="_blank">Track your order</a></p>';
+
+    return $tracking_info;
+}
+
 ?>
