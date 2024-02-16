@@ -222,7 +222,7 @@ function custom_tracking_page_callback() {
         if (file_exists($log_file)) {
             unlink($log_file);
             // Display success message
-            echo '<div class="notice notice-success is-dismissible"><p>Logs successfully deleted.</p></div>';
+            echo '<div class="notice notice-success is-dismissible"><p>Successfully cleared the log.</p></div>';
         }
     }
 
@@ -242,18 +242,18 @@ function custom_tracking_page_callback() {
                 <h2 style="margin: 0 0 -10px;">Update Existing Carriers</h2>
                 <table class="form-table" style="width: auto;">
                     <tr valign="top">
-                        <th scope="row" style="padding: 20px 0 0 3px;">Carrier Name</th>
-                        <th scope="row" style="padding: 20px 0 0 3px;">Tracking Link</th>
+                        <th scope="row" style="padding: 20px 0 0 3px; display: table-cell !important;">Carrier Name</th>
+                        <th scope="row" style="padding: 20px 0 0 3px; display: table-cell !important;">Tracking Link</th>
                     </tr>
                     <?php 
                     if(empty($carriers)) {
-                        echo '<tr valign="top"><td colspan="3" style="font-size: 13px; color: #8a8a8a; padding: 20px 0 10px 5px;">No saved Carriers.</td></tr>';
+                        echo '<tr valign="top"><td colspan="3" style="margin: 0; padding: 15px 0 10px 0;"><p style="font-size: 12.5px; color: #919191; padding: 5px; background: #dad9d9; margin: 5px 0 0 0; font-style: italic; text-align: center;">No saved carrier information...</p></td></tr>';
                     } else {
                         foreach ($carriers as $carrier => $link) { ?>
                             <tr valign="top">
-                                <td style="padding: 10px 0 0 0;"><input type="text" name="carriers[<?php echo esc_attr($carrier); ?>]" value="<?php echo esc_attr($carrier); ?>" /></td>
-                                <td style="padding: 10px 0 0 0;"><input type="text" name="carriers[<?php echo esc_attr($carrier); ?>_link]" value="<?php echo esc_attr($link); ?>" placeholder="(exclude &quot;https://&quot;)" /></td>
-                                <td style="padding: 10px 0 0 0;">
+                                <td style="padding: 10px 0 0 0; display: table-cell !important;"><input type="text" name="carriers[<?php echo esc_attr($carrier); ?>]" value="<?php echo esc_attr($carrier); ?>" style="width: -webkit-fill-available; margin-right: 10px;" /></td>
+                                <td style="padding: 10px 0 0 0; display: table-cell !important;"><input type="text" name="carriers[<?php echo esc_attr($carrier); ?>_link]" value="<?php echo esc_attr($link); ?>" placeholder="(exclude &quot;https://&quot;)" style="width: -webkit-fill-available; margin-right: 10px;" /></td>
+                                <td style="padding: 10px 0 0 0; display: table-cell !important;">
                                     <button type="submit" name="update_carrier" value="<?php echo esc_attr($carrier); ?>" class="button button-primary">Update</button>
                                     <button type="submit" name="delete_carrier" value="<?php echo esc_attr($carrier); ?>" class="button button-secondary" style="color: #fff !important; border-color: #f40000 !important; background: #f40000 !important;" onclick="return confirmDelete('<?php echo esc_js($carrier); ?>')">Delete</button>
                                 </td>
@@ -267,19 +267,22 @@ function custom_tracking_page_callback() {
                 <h2 style="margin: 0 0 -10px;">Add New Carrier</h2>
                 <table class="form-table" style="width: auto;">
                     <tr valign="top">
-                        <th scope="row" style="padding: 20px 0 0 3px;">Carrier Name</th>
-                        <th scope="row" style="padding: 20px 0 0 3px;">Tracking Link</th>
+                        <th scope="row" style="padding: 20px 0 0 3px; display: table-cell !important;">Carrier Name</th>
+                        <th scope="row" style="padding: 20px 0 0 3px; display: table-cell !important;">Tracking Link</th>
                     </tr>
                     <tr valign="top">
-                        <td style="padding: 10px 0 0 0;vertical-align: top;"><input type="text" name="new_carrier" /></td>
-                        <td style="padding: 10px 0 0 0;vertical-align: top;"><input type="text" name="new_carrier_link" placeholder="(exclude &quot;https://&quot;)" />
+                        <td style="padding: 10px 0 0 0;vertical-align: top; display: table-cell !important;"><input type="text" name="new_carrier" style="width: -webkit-fill-available; margin-right: 10px;" /></td>
+                        <td style="padding: 10px 0 0 0;vertical-align: top; display: table-cell !important;"><input type="text" name="new_carrier_link" placeholder="(exclude &quot;https://&quot;)" style="width: -webkit-fill-available; margin-right: 10px;" />
+                        <td style="padding: 10px 0 0 0;vertical-align: top; display: table-cell !important;">
+                            <button type="button" class="button button-secondary" onclick="testTrackingLink()">Test Tracking Link</button>                      
+                        </td>
                     </tr>
                 </table>
                 <p style="margin: 20px 0 7px 0;"><input type="submit" name="add_new_carrier" class="button button-primary" value="Add New Carrier"></p>
-                </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
+</div>
     <?php
     // Display the log section
     custom_tracking_display_log();
@@ -293,14 +296,13 @@ function custom_tracking_display_log() {
         $log_content = file_get_contents($log_file);
     }
     ?>
-    <button type="button" id="toggle-log" class="button button-secondary" style="margin: 30px 0 0 2px;">Show logs</button>
-    <div id="log-section" style="margin-left: 3px; display: none;">
-        <h2 style="font-size: 1.2em;">Logs</h2>
-        <pre style="font-size: 11.5px;"><?php echo esc_html($log_content); ?></pre>
-        <form method="post" action="" onsubmit="return confirm('Are you sure you want to delete the logs?');">
+    <button type="button" id="toggle-log" class="button button-secondary" style="margin: 30px 0 0 2px;">Show Log</button>
+    <div id="log-section" style="margin: 18px 0 0 3px; display: none;">
+        <pre style="font-size: 11.5px; margin-left: 2px; margin-right: 13px; margin-bottom: 0px !important; overflow-x: scroll; padding-bottom: 13px;"><?php echo esc_html($log_content); ?></pre>
+        <form method="post" action="" onsubmit="return confirm('Are you sure you want to clear the log for this plugin?');" style="margin-top: -15px;">
             <?php wp_nonce_field('custom_tracking_clear_logs_nonce', 'custom_tracking_clear_logs_nonce'); ?>
             <?php if (!empty($log_content)) : ?>
-                <p style="margin: 20px 0 7px 0;"><input type="submit" name="clear_logs" class="button button-primary" value="Delete logs" style="color: #fff !important; border-color: #f40000 !important; background: #f40000 !important;"></p>
+                <p style="margin: 20px 0 7px 0;"><input type="submit" name="clear_logs" class="button button-primary" value="Clear Log" style="color: #fff !important; border-color: #f40000 !important; background: #f40000 !important;"></p>
             <?php endif; ?>
         </form>
     </div>
@@ -309,17 +311,17 @@ function custom_tracking_display_log() {
             var logSection = document.getElementById('log-section');
             if (logSection.style.display === 'none') {
                 logSection.style.display = 'block';
-                document.getElementById('toggle-log').textContent = 'Hide logs';
+                document.getElementById('toggle-log').textContent = 'Hide Log';
             } else {
                 logSection.style.display = 'none';
-                document.getElementById('toggle-log').textContent = 'Show logs';
+                document.getElementById('toggle-log').textContent = 'Show Log';
             }
         });
     </script>
     <?php
 }
 
-// Enqueue JavaScript for form validation
+// Enqueue JavaScript for form validation and custom functionality
 function custom_tracking_enqueue_scripts() {
     ?>
     <script>
@@ -329,6 +331,22 @@ function custom_tracking_enqueue_scripts() {
                 return true;
             }
             return false;
+        }
+
+        // Function to handle clicking the "Test Tracking Link" button
+        function testTrackingLink() {
+            // Get the value of the new_carrier_link input box
+            var carrierLink = document.querySelector('input[name="new_carrier_link"]').value.trim();
+            // Check if the carrier link is not empty
+            if (carrierLink !== '') {
+                // Add "https://" to the beginning of the carrier link
+                carrierLink = 'https://' + carrierLink + 'ABC1234567890';
+                // Open the carrier link in a new tab
+                window.open(carrierLink, '_blank');
+            } else {
+                // Display an alert if the carrier link is empty
+                alert('Please enter a tracking link.');
+            }
         }
     </script>
     <?php
