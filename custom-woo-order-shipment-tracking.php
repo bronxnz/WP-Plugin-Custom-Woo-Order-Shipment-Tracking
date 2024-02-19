@@ -10,15 +10,16 @@ Author: Icecorp.
 add_action('woocommerce_admin_order_data_after_shipping_address', 'custom_tracking_shipping_fields_display_admin_order', 10, 1);
 
 function custom_tracking_shipping_fields_display_admin_order($order){
-    echo '<div class="order_custom_field" style="padding: 12px 15px 60px !important; background: #eee; border-radius: 10px; position: relative; width: fit-content; min-width: 200px; margin-left: -4px;">';
+    echo '<div class="order_custom_field" style="padding: 13px 15px 20px !important; background: #eee; border-radius: 10px; position: relative; width: fit-content; min-width: 200px; margin-left: -4px; display: grid;">';
 
     // Add an h3 header element
     echo '<h3 style="margin-top: 0px;">Tracking Information <a href="'.admin_url('admin.php?page=custom_tracking').'" style="position: absolute; top: 12px; right: 7px;"><span class="dashicons dashicons-admin-generic" style="text-decoration: none; color: #595959; font-size: 18px;"></span></a></h3>';
 
-    // Get carriers and tracking links from the options
+    // Get carriers, tracking numbers, and tracking links from the order
     $carriers = get_option('custom_tracking_carriers', array());
     $carrier_value = $order->get_meta('_1a_carrier', true);
     $tracking_number = $order->get_meta('_1b_tracking_number', true);
+    $tracking_link = $order->get_meta('_1c_tracking_link', true);
 
     // Dropdown select list for carriers
     echo '<p style="color: #595959;"><strong style="margin-left: 3px;">Carrier:</strong><br>';
@@ -51,12 +52,17 @@ function custom_tracking_shipping_fields_display_admin_order($order){
 
     // Tracking number input field
     echo '<style>.order_custom_field p.form-field._1b_tracking_number_field { width: 100% !important; }</style>';
-    echo '<p style="margin: 1em 0 -8px 0; color: #595959; width: 100%;"><strong style="margin-left: 3px;">Tracking Number:</strong><br>';
+    echo '<p style="margin: 0 0 -8px 0; color: #595959; width: 100%;"><strong style="margin-left: 3px;">Tracking Number:</strong><br>';
     woocommerce_wp_text_input(array(
         'id'          => '_1b_tracking_number',
         'placeholder' => __('Enter tracking number', 'woocommerce'),
         'value'       => $tracking_number, // Load the saved value
     ));
+
+    // Tracking link display
+    if (!empty($tracking_link)) {
+        echo '<p style="display: none;"><a href="' . esc_url($tracking_link) . '" target="_blank">' . esc_html($tracking_link) . '</a></p>';
+    }
 
     echo '</div>';
 }
@@ -68,10 +74,18 @@ function custom_tracking_save_fields($order_id, $post){
     $carrier = isset($_POST['_1a_carrier']) ? sanitize_text_field($_POST['_1a_carrier']) : '';
     $tracking_number = isset($_POST['_1b_tracking_number']) ? wp_kses($_POST['_1b_tracking_number'], array()) : '';
 
-    // Retrieve the previous values of Carrier and Tracking Number from the order
+    // Retrieve the previous values of Carrier, Tracking Number, and Tracking Link from the order
     $order = wc_get_order($order_id);
     $prev_carrier = $order->get_meta('_1a_carrier', true);
     $prev_tracking_number = $order->get_meta('_1b_tracking_number', true);
+    $prev_tracking_link = $order->get_meta('_1c_tracking_link', true);
+
+    // Get the tracking link associated with the selected carrier
+    $tracking_link = '';
+    $carriers = get_option('custom_tracking_carriers', array());
+    if (!empty($carrier) && isset($carriers[$carrier])) {
+        $tracking_link = $carriers[$carrier];
+    }
 
     // Check if both Carrier and Tracking Number fields are empty or set back to default
     $both_empty_or_default = empty($carrier) && empty($tracking_number);
@@ -79,39 +93,51 @@ function custom_tracking_save_fields($order_id, $post){
     // Handle the case where both Carrier and Tracking Number are empty or set back to default
     if ($both_empty_or_default) {
         // Only add the note if there were previous values to remove and they haven't been removed already
-        if (!empty($prev_carrier) || !empty($prev_tracking_number)) {
-            // Clear the previous values of Carrier and Tracking Number
+        if (!empty($prev_carrier) || !empty($prev_tracking_number) || !empty($prev_tracking_link)) {
+            // Clear the previous values of Carrier, Tracking Number, and Tracking Link
             $order->delete_meta_data('_1a_carrier');
             $order->delete_meta_data('_1b_tracking_number');
+            $order->delete_meta_data('_1c_tracking_link');
             $order->save();
 
             // Add a note to the order notes box
             $order->add_order_note('All tracking information removed');
         }
     } else {
-        // Clear Carrier if it's empty or set back to default
-        if (empty($carrier)) {
-            $order->delete_meta_data('_1a_carrier');
-        } else {
-            // Update the Carrier value
-            $order->update_meta_data('_1a_carrier', $carrier);
+        // Check if there are changes to Carrier, Tracking Number, or Tracking Link
+        $carrier_changed = $prev_carrier !== $carrier;
+        $tracking_number_changed = $prev_tracking_number !== $tracking_number;
+        $tracking_link_changed = $prev_tracking_link !== $tracking_link;
+
+        // Update the values and add notes only if there are changes
+        if ($carrier_changed || $tracking_number_changed || $tracking_link_changed) {
+            // Clear Carrier if it's empty or set back to default
+            if (empty($carrier)) {
+                $order->delete_meta_data('_1a_carrier');
+            } else {
+                // Update the Carrier value
+                $order->update_meta_data('_1a_carrier', $carrier);
+            }
+
+            // Clear Tracking Number if it's empty or set back to default
+            if (empty($tracking_number)) {
+                $order->delete_meta_data('_1b_tracking_number');
+            } else {
+                // Update the Tracking Number value
+                $order->update_meta_data('_1b_tracking_number', $tracking_number);
+            }
+
+            // Update the Tracking Link value
+            $order->update_meta_data('_1c_tracking_link', $tracking_link);
+
+            // Save changes
+            $order->save();
+
+            // Add a note to the order notes box if either Carrier, Tracking Number, or Tracking Link is updated
+            $carrier_note = empty($carrier) ? '[no carrier]' : $carrier;
+            $tracking_note = empty($tracking_number) ? '[no tracking number]' : $tracking_number;
+            $order->add_order_note(sprintf('Tracking information updated: %s - %s', $carrier_note, $tracking_note));
         }
-
-        // Clear Tracking Number if it's empty or set back to default
-        if (empty($tracking_number)) {
-            $order->delete_meta_data('_1b_tracking_number');
-        } else {
-            // Update the Tracking Number value
-            $order->update_meta_data('_1b_tracking_number', $tracking_number);
-        }
-
-        // Save changes
-        $order->save();
-
-        // Add a note to the order notes box if either Carrier or Tracking Number is updated
-        $carrier_note = empty($carrier) ? '[no carrier]' : $carrier;
-        $tracking_note = empty($tracking_number) ? '[no tracking number]' : $tracking_number;
-        $order->add_order_note(sprintf('Tracking information updated: %s - %s', $carrier_note, $tracking_note));
     }
 }
 
@@ -378,47 +404,6 @@ function custom_tracking_log_action($action, $carrier_name, $old_tracking_link, 
     $log_file = dirname(__FILE__) . '/custom_tracking_log.txt';
     $current_content = file_get_contents($log_file);
     file_put_contents($log_file, $log_entry . $current_content);
-}
-
-// Add shortcode to display tracking information on the frontend
-add_shortcode('custom_tracking_info', 'custom_tracking_info_shortcode');
-
-function custom_tracking_info_shortcode($atts) {
-    // Extract shortcode attributes
-    $atts = shortcode_atts(array(
-        'order_id' => ''
-    ), $atts);
-
-    if (empty($atts['order_id'])) {
-        return 'Please provide an order ID.';
-    }
-
-    // Retrieve the order
-    $order = wc_get_order($atts['order_id']);
-
-    if (!$order) {
-        return 'Invalid order ID.';
-    }
-
-    // Retrieve carrier and tracking number
-    $carrier = $order->get_meta('_1a_carrier', true);
-    $tracking_number = $order->get_meta('_1b_tracking_number', true);
-
-    // Check if both carrier and tracking number exist
-    if (empty($carrier) || empty($tracking_number)) {
-        return 'No tracking information available.';
-    }
-
-    // Retrieve tracking link for the carrier
-    $carriers = get_option('custom_tracking_carriers', array());
-    $tracking_link = isset($carriers[$carrier]) ? $carriers[$carrier] : '';
-
-    // Generate tracking info HTML
-    $tracking_info = '<p>Carrier: ' . esc_html($carrier) . '</p>';
-    $tracking_info .= '<p>Tracking Number: ' . esc_html($tracking_number) . '</p>';
-    $tracking_info .= '<p>Tracking Link: <a href="' . esc_url($tracking_link . $tracking_number) . '" target="_blank">Track your order</a></p>';
-
-    return $tracking_info;
 }
 
 ?>
