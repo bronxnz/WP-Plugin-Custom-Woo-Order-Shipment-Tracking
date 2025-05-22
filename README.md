@@ -1,7 +1,31 @@
 <h1>Custom Woo Order Shipment Tracking - WordPress Plugin</h1>
 <br>
+
+<strong>Installation:</strong><br>
+1. Create a ZIP file containing only the main plugin file (custom-woo-order-shipment-tracking.php)
+2. Name the ZIP file "custom-woo-order-shipment-tracking.zip"
+3. Log in to WordPress admin dashboard & upload the plugin
+4. Install and Activate the plugin
+
+<strong>Requirements:</strong><br>
+- WordPress (latest version recommended)
+- WooCommerce must be installed and activated
+- YayMail (optional, for enhanced email capabilities)
+
 <strong>To add Carriers & Carrier Tracking Links:</strong><br>
 Use the WordPress Admin Dashboard Menu Item: <code>Custom Tracking</code>
+
+*****
+
+<strong>YayMail Compatibility</strong><br>
+This plugin is designed to be fully compatible with YayMail for WooCommerce. The tracking information is stored in WooCommerce Order meta using standardized keys, allowing YayMail to access and display the data in email templates.
+<br><br>
+<strong>Available order meta for YayMail templates:</strong><br>
+<code>_1a_carrier</code> - The shipping carrier name<br>
+<code>_1b_tracking_number</code> - The shipment tracking number<br>
+<code>_1c_tracking_link</code> - The full tracking URL for the shipment
+<br><br>
+You can use these meta fields in YayMail templates with shortcodes or custom elements to display tracking information in your order emails.
 
 *****
 
@@ -19,20 +43,8 @@ Option_Name: <code>_1c_tracking_link</code>
 
 *****
 
-<strong>YayMail Compatibility</strong><br>
-This plugin is designed to be fully compatible with YayMail for WooCommerce. The tracking information is stored in WooCommerce Order meta using standardized keys, allowing YayMail to access and display the data in email templates.
-<br><br>
-<strong>Available order meta for YayMail templates:</strong><br>
-<code>_1a_carrier</code> - The shipping carrier name<br>
-<code>_1b_tracking_number</code> - The shipment tracking number<br>
-<code>_1c_tracking_link</code> - The full tracking URL for the shipment
-<br><br>
-You can use these meta fields in YayMail templates with shortcodes or custom elements to display tracking information in your order emails.
-
-*****
-
 <strong>Need to delete ALL saved Carrier/Tracking Link/Tracking Number data from database?</strong>
-<br><br>
+<br>
 Add the following script to <code>functions.php</code>, save changes, then load any wp-admin page.<br>
 Comment it out/remove it to stop it from running with each wp-admin page load.
 <br><br>
