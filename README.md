@@ -19,6 +19,18 @@ Option_Name: <code>_1c_tracking_link</code>
 
 *****
 
+<strong>YayMail Compatibility</strong><br>
+This plugin is designed to be fully compatible with YayMail for WooCommerce. The tracking information is stored in WooCommerce Order meta using standardized keys, allowing YayMail to access and display the data in email templates.
+<br><br>
+<strong>Available order meta for YayMail templates:</strong><br>
+<code>_1a_carrier</code> - The shipping carrier name<br>
+<code>_1b_tracking_number</code> - The shipment tracking number<br>
+<code>_1c_tracking_link</code> - The full tracking URL for the shipment
+<br><br>
+You can use these meta fields in YayMail templates with shortcodes or custom elements to display tracking information in your order emails.
+
+*****
+
 <strong>Need to delete ALL saved Carrier/Tracking Link/Tracking Number data from database?</strong>
 <br><br>
 Add the following script to <code>functions.php</code>, save changes, then load any wp-admin page.<br>
